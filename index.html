@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翔奕營造有限公司 - 歷屆工程管理與作品實績系統 (Google 雲端雙向同步)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .theme-green { background-color: #01814A; }
+    .theme-border { border-color: #016b3d; }
+    .tab-btn.active {
+      border-bottom: 2.5px solid #01814A;
+      color: #01814A;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 頂部導覽列 (#01814A 主題色) -->
+  <header class="bg-[#01814A] text-white shadow-md sticky top-0 z-40 border-b border-[#016b3d]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <img src="https://lh3.googleusercontent.com/d/1IwoAL8I7c54k6HiAMc7K4OHVYrn-iR9V" 
+             alt="翔奕營造 Logo" 
+             class="h-10 md:h-12 w-auto object-contain shrink-0 drop-shadow-sm">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base md:text-xl font-bold tracking-wide text-white">翔奕營造有限公司</h1>
+            <span class="text-[11px] bg-[#016b3d] text-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-400/30 hidden sm:inline-block">Google 雲端雙向同步系統</span>
+          </div>
+          <p class="text-[11px] text-emerald-100/80 font-mono tracking-wider">SHIANG YIH CONSTRUCTION CO., LTD.</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="syncWithGoogle()" class="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition shadow-sm cursor-pointer">
+          <i class="fa-solid fa-rotate mr-1.5"></i> 同步雲端資料 (強制上傳 37 筆)
+        </button>
+        <button onclick="openModal()" class="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shadow transition">
+          <i class="fa-solid fa-plus mr-1.5"></i> 新增工程案件
+        </button>
+        <button onclick="exportData()" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#016b3d] hover:bg-[#015430] text-emerald-100 border border-emerald-400/30 text-xs font-medium transition shadow-sm">
+          <i class="fa-solid fa-download mr-1.5"></i> 匯出 JSON
+        </button>
+        <label class="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#016b3d] hover:bg-[#015430] text-emerald-100 border border-emerald-400/30 text-xs font-medium cursor-pointer transition shadow-sm">
+          <i class="fa-solid fa-upload mr-1.5"></i> 匯入備份
+          <input type="file" onchange="importData(event)" class="hidden" accept=".json">
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- 雲端同步狀態提示列 -->
+  <div id="syncStatus" class="bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-center py-1.5 text-xs font-medium hidden">
+    <i class="fa-solid fa-cloud-arrow-up mr-1"></i> <span id="syncText">正在與 Google 雲端同步...</span>
+  </div>
+
+  <!-- 數據統計看板 -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 w-full mt-5">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-[#01814A]/10 text-[#01814A] flex items-center justify-center text-lg font-bold">
+          <i class="fa-solid fa-folder-closed"></i>
+        </div>
+        <div>
+          <div class="text-xl sm:text-2xl font-black text-slate-800" id="stat-count">0</div>
+          <div class="text-[11px] text-slate-500 font-medium">總承攬件數</div>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-[#01814A] flex items-center justify-center text-lg font-bold">
+          <i class="fa-solid fa-sack-dollar"></i>
+        </div>
+        <div>
+          <div class="text-xl sm:text-2xl font-black text-[#01814A]" id="stat-amount">0 萬</div>
+          <div class="text-[11px] text-slate-500 font-medium">總決標承攬金額</div>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-lg font-bold">
+          <i class="fa-solid fa-building-shield"></i>
+        </div>
+        <div>
+          <div class="text-xl sm:text-2xl font-black text-amber-700" id="stat-seismic">0</div>
+          <div class="text-[11px] text-slate-500 font-medium">耐震結構補強工程</div>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center text-lg font-bold">
+          <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+        <div>
+          <div class="text-xl sm:text-2xl font-black text-sky-700" id="stat-billed">0 萬</div>
+          <div class="text-[11px] text-slate-500 font-medium">累計已請款結算</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 篩選與搜尋列 -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 w-full mt-4">
+    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
+        <button onclick="filterCategory('all', this)" class="cat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-[#01814A] text-white shadow-sm transition">全部案件 (<span id="count-all">0</span>)</button>
+        <button onclick="filterCategory('seismic', this)" class="cat-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">耐震補強</button>
+        <button onclick="filterCategory('community', this)" class="cat-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">活動中心 / 廳舍</button>
+        <button onclick="filterCategory('library', this)" class="cat-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">圖書館 / 學校</button>
+        <button onclick="filterCategory('repair', this)" class="cat-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">修繕改善</button>
+      </div>
+      <div class="relative w-full md:w-80">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+        <input type="text" id="searchInput" oninput="renderProjects()" placeholder="搜尋工程名稱、備註或年度關鍵字..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#01814A]">
+      </div>
+    </div>
+  </section>
+
+  <!-- 工程卡片清單展示區 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 w-full flex-1">
+    <div id="projectGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 px-4 mt-8 text-center text-xs">
+    <p class="font-semibold text-slate-300">翔奕營造有限公司 © 2026 版權所有</p>
+    <p class="mt-1 text-slate-500">專營公共建築物耐震補強、活動中心修繕、公有廳舍與防水修繕工程 (Google 雲端雙向同步)</p>
+  </footer>
+
+  <!-- ==================== 詳細檢視 Modal ==================== -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="bg-[#01814A] text-white px-5 py-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span id="detailCategoryBadge" class="bg-white/20 text-white text-xs px-2.5 py-0.5 rounded font-bold">工程詳情</span>
+          <h3 id="detailTitle" class="text-base md:text-lg font-bold"></h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="detailEditBtn" class="bg-white text-[#01814A] hover:bg-slate-100 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+            <i class="fa-solid fa-pen-to-square"></i> 編輯此案
+          </button>
+          <button onclick="closeDetailModal()" class="text-white hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center text-base">✕</button>
+        </div>
+      </div>
+      <div id="detailContent" class="p-5 overflow-y-auto space-y-5 text-xs text-slate-700"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 新增 / 編輯完整 56 欄位表單 Modal ==================== -->
+  <div id="projectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="bg-[#01814A] text-white px-5 py-3.5 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-5 bg-amber-300 rounded-full inline-block"></span>
+          <h3 class="text-base font-bold text-white" id="modalTitle">建立 / 修改工程資料</h3>
+        </div>
+        <button onclick="closeModal()" class="text-white hover:bg-white/20 w-7 h-7 rounded-full flex items-center justify-center text-base">✕</button>
+      </div>
+
+      <div class="flex border-b border-slate-200 bg-slate-50 px-4 text-xs font-semibold text-slate-600 overflow-x-auto shrink-0">
+        <button type="button" onclick="switchFormTab('ftab-basic')" class="tab-btn active px-4 py-3 whitespace-nowrap">1. 工程名稱與工期排程</button>
+        <button type="button" onclick="switchFormTab('ftab-money')" class="tab-btn px-4 py-3 whitespace-nowrap">2. 契約金額與變更設計</button>
+        <button type="button" onclick="switchFormTab('ftab-val')" class="tab-btn px-4 py-3 whitespace-nowrap">3. 各期估驗款進度</button>
+        <button type="button" onclick="switchFormTab('ftab-final')" class="tab-btn px-4 py-3 whitespace-nowrap">4. 結算、保證金與保固</button>
+      </div>
+
+      <form id="projectForm" onsubmit="saveProject(event)" class="p-5 overflow-y-auto space-y-4 flex-1">
+        <input type="hidden" id="form-id">
+        <input type="hidden" id="f-決標公告_PDF">
+
+        <!-- 分頁 1: 工程名稱與工期排程 -->
+        <div id="ftab-basic" class="form-tab-content space-y-4">
+          <div class="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-200">
+            <label class="block text-xs font-bold text-slate-800 mb-1">工程名稱 *</label>
+            <input type="text" id="f-工程名稱" required class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#01814A] font-medium" placeholder="請輸入完整工程名稱...">
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div><label class="block text-[11px] font-semibold text-slate-600 mb-1">狀態</label><input type="text" id="f-狀態" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg"></div>
+            <div><label class="block text-[11px] font-semibold text-slate-600 mb-1">決標日期</label><input type="text" id="f-決標日期" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg"></div>
+            <div><label class="block text-[11px] font-semibold text-slate-600 mb-1">開工日期</label><input type="text" id="f-開工日期" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg"></div>
+            <div><label class="block text-[11px] font-semibold text-slate-600 mb-1">工期 (天)</label><input type="text" id="f-工期(天)" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg"></div>
+          </div>
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+            <div class="font-bold text-xs text-[#01814A] flex items-center gap-1.5">
+              <i class="fa-solid fa-clock-rotate-left"></i> 停復工、展延與竣工日
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div><label class="block text-[11px] text-slate-600 mb-1">停工日期</label><input type="text" id="f-停工日期" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">復工日期</label><input type="text" id="f-復工日期" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">竣工日期(原)</label><input type="text" id="f-竣工日期(原)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">竣工日期(新)</label><input type="text" id="f-竣工日期(新)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+              <div><label class="block text-[11px] text-slate-600 mb-1">展延天數</label><input type="text" id="f-展延天數" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">第一次變更新增天數</label><input type="text" id="f-第一次變更設計新增天數" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">第二次變更新增天數</label><input type="text" id="f-第二次變更設計新增天數" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">第三次變更新增天數</label><input type="text" id="f-第三次變更設計新增天數" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分頁 2: 契約金額與變更設計 -->
+        <div id="ftab-money" class="form-tab-content hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">工程預算 (元)</label><input type="text" id="f-工程預算(元)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono"></div>
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">決標金額 (元)</label><input type="text" id="f-決標金額(元)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono font-bold text-[#01814A]"></div>
+          </div>
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+            <div class="font-bold text-xs text-[#01814A]">變更設計金額明細</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div><label class="block text-[11px] text-slate-600 mb-1">第一次變更追加金額 (元)</label><input type="text" id="f-第一次變更設計追加金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">第二次變更設計金額 (元)</label><input type="text" id="f-第二次變更設計金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono"></div>
+              <div><label class="block text-[11px] text-slate-600 mb-1">第三次變更設計金額 (元)</label><input type="text" id="f-第三次變更設計金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              <div><label class="block text-[11px] font-bold text-slate-700 mb-1">變更設計後總金額 (元)</label><input type="text" id="f-變更設計後總金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono font-bold text-blue-700"></div>
+              <div><label class="block text-[11px] font-bold text-slate-700 mb-1">主辦機關尚未結清總金額 (元)</label><input type="text" id="f-主辦機關尚未結清總金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono font-bold text-rose-700"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分頁 3: 各期估驗款進度 -->
+        <div id="ftab-val" class="form-tab-content hidden space-y-4">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">第一次估驗款【扣除5%保留款】</span>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div><label class="block text-[10px] text-slate-500">估驗金額</label><input type="text" id="f-第一次估驗金額(元) 【扣除5%保留款】" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">估驗日期</label><input type="text" id="f-第一次估驗日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">送件日期</label><input type="text" id="f-第一次估驗_送件日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">開發票時間</label><input type="text" id="f-第一次估驗_開發票時間" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">入帳日</label><input type="text" id="f-第一次估驗_入帳日" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">第二次估驗款【扣除5%保留款】</span>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div><label class="block text-[10px] text-slate-500">估驗金額</label><input type="text" id="f-第二次估驗金額(元) 【扣除5%保留款】" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">估驗日期</label><input type="text" id="f-第二次估驗日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">送件日期</label><input type="text" id="f-第二次估驗_送件日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">開發票時間</label><input type="text" id="f-第二次估驗_開發票時間" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">入帳日</label><input type="text" id="f-第二次估驗_入帳日" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">第三次估驗款【扣除5%保留款】</span>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div><label class="block text-[10px] text-slate-500">估驗金額</label><input type="text" id="f-第三次估驗金額(元) 【扣除5%保留款】" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">估驗日期</label><input type="text" id="f-第三次估驗日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">送件日期</label><input type="text" id="f-第三次估驗_送件日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">開發票時間</label><input type="text" id="f-第三次估驗_開發票時間" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">入帳日</label><input type="text" id="f-第三次估驗_入帳日" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">末期估驗款【扣除5%保留款】</span>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div><label class="block text-[10px] text-slate-500">估驗金額</label><input type="text" id="f-末期估驗金額(元) 【扣除5%保留款】" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">估驗日期</label><input type="text" id="f-末期估驗日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">送件日期</label><input type="text" id="f-末期估驗_送件日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">開發票時間</label><input type="text" id="f-末期估驗_開發票時間" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">入帳日</label><input type="text" id="f-末期估驗_入帳日" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分頁 4: 結算、保證金與保固 -->
+        <div id="ftab-final" class="form-tab-content hidden space-y-4">
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">工程結算與請款資訊</span>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div><label class="block text-[10px] text-slate-500">結算金額(元)</label><input type="text" id="f-結算金額(元)" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">結算日期</label><input type="text" id="f-結算日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">送件日期</label><input type="text" id="f-結算_送件日期" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">開發票時間</label><input type="text" id="f-結算_開發票時間" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[10px] text-slate-500">入帳日</label><input type="text" id="f-結算_入帳日" class="w-full px-2 py-1 text-xs bg-white border rounded"></div>
+            </div>
+            <div class="pt-2">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">已請款總金額 (元)</label>
+              <input type="text" id="f-已請款金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded font-mono">
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">保證金資訊</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div><label class="block text-[11px] text-slate-600">履約保證金(元)</label><input type="text" id="f-履約保證金(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded font-mono"></div>
+              <div><label class="block text-[11px] text-slate-600">差額保證金(元)</label><input type="text" id="f-差額保證金(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded font-mono"></div>
+              <div><label class="block text-[11px] text-slate-600">變更設計後差額保證金(元)</label><input type="text" id="f-變更設計後 差額保證金(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded font-mono"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <span class="font-bold text-xs text-[#01814A]">保固期與款項</span>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div><label class="block text-[11px] text-slate-600">保固年限</label><input type="text" id="f-保固年限" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[11px] text-slate-600">保固日期</label><input type="text" id="f-保固日期" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded"></div>
+              <div><label class="block text-[11px] text-slate-600">保固金額(元)</label><input type="text" id="f-保固金額(元)" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded font-mono"></div>
+              <div><label class="block text-[11px] text-slate-600">申請退保固金日期</label><input type="text" id="f-申請退保固金日期" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded"></div>
+            </div>
+            <div class="pt-1">
+              <label class="block text-[11px] text-slate-600">收到保固金款項日期</label>
+              <input type="text" id="f-收到保固金款項日期" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-amber-50/50 p-3 rounded-xl border border-amber-200">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">📢 決標公告文字名稱</label>
+              <input type="text" id="f-決標公告" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded" placeholder="例如：北寮里決標公告">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-[#01814A] mb-1">📎 上傳決標公告 PDF 檔案</label>
+              <div class="flex items-center gap-2">
+                <input type="file" id="pdfUploadInput" accept=".pdf" onchange="handlePdfUpload(event)" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#01814A] file:text-white hover:file:bg-[#016b3d] cursor-pointer bg-white border rounded-lg">
+              </div>
+              <div id="pdfUploadStatus" class="text-[11px] text-slate-500 mt-1 font-mono">尚未上傳 PDF</div>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">備註說明</label>
+              <input type="text" id="f-備註" class="w-full px-2.5 py-1.5 text-xs bg-white border rounded" placeholder="備註說明事項...">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-4 border-t border-slate-200">
+          <button type="button" id="deleteProjectBtn" onclick="deleteCurrentProject()" class="text-xs text-rose-600 hover:text-rose-800 font-bold px-3 py-1.5 rounded bg-rose-50 border border-rose-200 hidden">
+            <i class="fa-solid fa-trash mr-1"></i> 刪除此案件
+          </button>
+          <div class="ml-auto flex gap-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">取消</button>
+            <button type="submit" class="px-5 py-2 text-xs font-bold rounded-lg bg-[#01814A] hover:bg-[#016b3d] text-white shadow">確認儲存並同步雲端</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5P-mun-XkUdPM0R-r1lfMWFkuhMpoYmLhCafDzEIGbBjr7KjVxWUH7W1Ba-_Dcag/exec";
+    const STORAGE_KEY = 'xiangyi_construction_projects_v2';
+
+    // 完整的 37 筆 Excel 初始資料庫
+    const INITIAL_PROJECTS = [{"id": 3, "工程名稱": "臺南市歸仁戶政事務所歸仁辦公處耐震補強工程", "決標日期": "", "開工日期": "115/9/20", "停工日期": "", "復工日期": "", "竣工日期(原)": "2026-10-15", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": 8683281, "決標金額(元)": 8280000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 400000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": 200000, "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "開工", "決標公告": "北寮里決標公告", "備註": "", "決標公告_PDF": ""}, {"id": 4, "工程名稱": "南化區北寮里活動中心耐震補強工程", "決標日期": "115/04/16", "開工日期": "2026-06-01", "停工日期": "", "復工日期": "", "竣工日期(原)": "2026-10-15", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": 8683281, "決標金額(元)": 8280000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 400000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": 200000, "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "開工", "決標公告": "北寮里決標公告", "備註": "", "決標公告_PDF": ""}, {"id": 5, "工程名稱": "溪頂溪東里聯合活動中心耐震補強工程", "決標日期": "114/12/31", "開工日期": "2026-03-04", "停工日期": "", "復工日期": "", "竣工日期(原)": "2026-08-30", "工期(天)": 180, "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": 13, "竣工日期(新)": "2026-09-12", "工程預算(元)": 7463277, "決標金額(元)": 5888000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": 1843508, "第一次估驗日期": "115/05/08", "第一次估驗_送件日期": "115/5/15", "第一次估驗_開發票時間": "115/06/30", "第一次估驗_入帳日": "115/08/18", "第二次估驗金額(元) 【扣除5%保留款】": 2127924, "第二次估驗日期": "115/07/01", "第二次估驗_送件日期": "115/7/15", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 588800, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "開工", "決標公告": "溪頂溪東里決標公告", "備註": "工務局補助款", "決標公告_PDF": ""}, {"id": 6, "工程名稱": "臺南市七股區圖書館耐震補強工程", "決標日期": "114/12/16", "開工日期": "2026-01-28", "停工日期": "2026-01-28", "復工日期": "2026-04-07", "竣工日期(原)": "2026-07-26", "工期(天)": 180, "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "2026-10-03", "工程預算(元)": 13625964, "決標金額(元)": 11280000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "115/06/22", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "115/09/18", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "115/09/04", "第二次估驗_送件日期": "115/09/18", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 1128000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "開工", "決標公告": "七股區圖書館決標公告", "備註": "工務局補助款", "決標公告_PDF": ""}, {"id": 7, "工程名稱": "沙灘忠誠社區聯合活動中心建物防水修繕工程", "決標日期": "114/10/16", "開工日期": "2025-12-04", "停工日期": "", "復工日期": "", "竣工日期(原)": "2026-03-03", "工期(天)": 90, "第一次變更設計新增天數": 45, "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": 45, "竣工日期(新)": "2026-06-01", "工程預算(元)": 5235567, "決標金額(元)": 4280000, "第一次變更設計追加金額(元)": 760236, "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": 5040236, "第一次估驗金額(元) 【扣除5%保留款】": 689593, "第一次估驗日期": "115/03/27", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "115/01/29", "第一次估驗_入帳日": "115/02/13", "第二次估驗金額(元) 【扣除5%保留款】": 1293400, "第二次估驗日期": "115/04/10", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "115/05/11", "第二次估驗_入帳日": "115/05/27", "第三次估驗金額(元) 【扣除5%保留款】": 2689770, "第三次估驗日期": "115/06/03", "第三次估驗_送件日期": "115/06/16", "第三次估驗_開發票時間": "115/07/23", "第三次估驗_入帳日": "115/08/13", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "115/09/10", "末期估驗_入帳日": "", "結算金額(元)": 367473, "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": 4672763, "履約保證金(元)": 428000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": 76024, "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "開工", "決標公告": "沙灘忠誠決標公告", "備註": "", "決標公告_PDF": ""}, {"id": 8, "工程名稱": "臺南市永康地政事務所耐震補強工程", "決標日期": "114/06/20", "開工日期": "2025-07-23", "停工日期": "2025-07-23", "復工日期": "2025-10-31", "竣工日期(原)": "2025-12-19", "工期(天)": 150, "第一次變更設計新增天數": 20, "第二次變更設計新增天數": 7, "第三次變更設計新增天數": "", "展延天數": 6.5, "竣工日期(新)": "2026-05-02", "工程預算(元)": 13009121, "決標金額(元)": 10380000, "第一次變更設計追加金額(元)": 567449, "第二次變更設計金額(元)": 178374, "第三次變更設計金額(元)": "", "變更設計後總金額(元)": 11125823, "第一次估驗金額(元) 【扣除5%保留款】": 2438752, "第一次估驗日期": "114/12/12", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "114/12/30", "第一次估驗_入帳日": "115/01/07", "第二次估驗金額(元) 【扣除5%保留款】": 2913062, "第二次估驗日期": "115/02/05", "第二次估驗_送件日期": "115/02/24", "第二次估驗_開發票時間": "115/03/12", "第二次估驗_入帳日": "115/04/02", "第三次估驗金額(元) 【扣除5%保留款】": 3794394, "第三次估驗日期": "115/4/1", "第三次估驗_送件日期": "115/04/08", "第三次估驗_開發票時間": "115/04/23", "第三次估驗_入帳日": "115/05/21", "末期估驗金額(元) 【扣除5%保留款】": 1313659, "末期估驗日期": "115/4/30", "末期估驗_送件日期": "115/05/25", "末期估驗_開發票時間": "115/6/29", "末期估驗_入帳日": "115/07/17", "結算金額(元)": 665956, "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": 10459867, "履約保證金(元)": 800000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": 300000, "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": 1165956, "狀態": "完工", "決標公告": "永康地政決標公告", "備註": "工務局補助款", "決標公告_PDF": ""}, {"id": 9, "工程名稱": "高雄市茄萣戶政事務所113年度辦公廳舍耐震補強工程", "決標日期": "114/06/09", "開工日期": "114/08/12", "停工日期": "", "復工日期": "", "竣工日期(原)": "114/11/19", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "114/11/19", "工程預算(元)": "", "決標金額(元)": 3780000, "第一次變更設計追加金額(元)": 43230, "第二次變更設計金額(元)": 43230, "第三次變更設計金額(元)": "", "變更設計後總金額(元)": 3823230, "第一次估驗金額(元) 【扣除5%保留款】": 1135748, "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "114/11/27", "第一次估驗_入帳日": "114/12/18", "第二次估驗金額(元) 【扣除5%保留款】": 1993599, "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "114/11/27", "第二次估驗_入帳日": "114/12/26", "第三次估驗金額(元) 【扣除5%保留款】": 738448, "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "115/01/27", "第三次估驗_入帳日": "115/02/12", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "115/01/27", "末期估驗_入帳日": "115/02/12", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 178000, "差額保證金(元)": 200000, "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 10, "工程名稱": "臺南市中西區民主社區活動中心、藥王里活動中心耐震補強工程", "決標日期": "114/01/14", "開工日期": "114/2/10", "停工日期": "", "復工日期": "", "竣工日期(原)": "114/7/9", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "114/7/9", "工程預算(元)": "", "決標金額(元)": 6260000, "第一次變更設計追加金額(元)": 599093, "第二次變更設計金額(元)": 599093, "第三次變更設計金額(元)": "", "變更設計後總金額(元)": 6859093, "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 256000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": 59909, "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 11, "工程名稱": "嘉義縣日安布袋社會福利服務中心耐震補強計畫", "決標日期": "114/01/08", "開工日期": "114/2/27", "停工日期": "", "復工日期": "", "竣工日期(原)": "114/7/26", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "114/7/26", "工程預算(元)": "", "決標金額(元)": 3990000, "第一次變更設計追加金額(元)": 332238, "第二次變更設計金額(元)": 332238, "第三次變更設計金額(元)": "", "變更設計後總金額(元)": 4322238, "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": 985500, "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": 985178, "履約保證金(元)": 399000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": 79757, "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": 1254562, "狀態": "完工", "決標公告": "", "備註": "扣款322$\n保險未保金額", "決標公告_PDF": ""}, {"id": 12, "工程名稱": "臺南市中西區南門里活動中心廁所修繕工程", "決標日期": "114/10/28", "開工日期": "114/12/02", "停工日期": "", "復工日期": "", "竣工日期(原)": "115/01/20", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 880000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": 880000, "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": 880000, "履約保證金(元)": 88000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": 968000, "狀態": "完工", "決標公告": 0, "備註": "", "決標公告_PDF": ""}, {"id": 13, "工程名稱": "114年全國中等學校運動會競賽場地(安平館)設施設備改善工程", "決標日期": "113/11/28", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 458000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 15000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 14, "工程名稱": "臺南市新化區知義里活動中心公有建築物耐震補強工程及臺南市新化區礁坑社區活動中心公有建築物耐震補強工程", "決標日期": "113/10/16", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "114/2/18", "工程預算(元)": "", "決標金額(元)": 1560000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 80000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 15, "工程名稱": "七股苗圃辦公室耐震補強工程", "決標日期": "113/10/14", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 2180000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 218000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 16, "工程名稱": "113年度高雄市轄內掩埋場暨堆肥廚餘場設施(備)維護修繕工程-旗山掩埋場辦公室耐震補強工程", "決標日期": "113/09/03", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 240000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 10000, "差額保證金(元)": 10000, "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 17, "工程名稱": "113年度清潔隊備勤室環境改善及優化計畫-臺南市南區", "決標日期": "113/09/03", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 656000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 18, "工程名稱": "台南市北門區圖書館耐震補強", "決標日期": "113/07/09", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "114/1/15", "工程預算(元)": "", "決標金額(元)": 5300000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 230000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 19, "工程名稱": "高雄市立圖書館六龜分館建築物耐震補強工程", "決標日期": "113/05/22", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 6060000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 20, "工程名稱": "113年度臺南市安平區公園綠地等園內設施維護改善工程(開口契約)", "決標日期": "113/03/12", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 660000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 21, "工程名稱": "高雄市岡山區老人活動中心耐震補強工程", "決標日期": "112/11/23", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 3166000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": 21899, "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 22, "工程名稱": "臺南市安平區石門國民小學至誠樓校舍補強工程", "決標日期": "112/11/14", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 4250000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": 49936, "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 23, "工程名稱": "臺南市歸仁區圖書館及游泳池耐震補強計畫", "決標日期": "112/08/30", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 7880000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 280000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 24, "工程名稱": "112年國中校區C棟廁所修繕工程", "決標日期": "112/05/26", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 1050000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 31500, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 25, "工程名稱": "111年度職務宿舍整修工程", "決標日期": "112/05/24", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 5688000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 26, "工程名稱": "本分局民權派出所2、3樓員警待勤室鋁窗換新工程", "決標日期": "112/05/18", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 610000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 27, "工程名稱": "樂群樓三樓女廁整修工程", "決標日期": "112/05/08", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 1030000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 28, "工程名稱": "112年歸仁分局關廟分駐所廳舍廁所改造工程案", "決標日期": "112/05/08", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 750000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 29, "工程名稱": "協進國小幼兒園廁所盥洗室及門窗整修工程", "決標日期": "112/01/11", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 1338000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 13380, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 30, "工程名稱": "關廟區大潭埤公園整修工程", "決標日期": "111/12/29", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 1168000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 30000, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 31, "工程名稱": "本分局民權派出所 2樓盥洗室、3樓天花板及防水修繕工程。", "決標日期": "111/12/20", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 1388000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 32, "工程名稱": "大潭埤公園植栽穴及北岸平台修復工程", "決標日期": "111/12/01", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 555000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 33, "工程名稱": "布袋里活動中心耐震補強工程", "決標日期": "111/07/27", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 4890000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 34, "工程名稱": "臺南市安平區平通里活動中心整修工程", "決標日期": "111/06/27", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 655000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 35, "工程名稱": "歸仁區歸南北極殿公廁改善工程", "決標日期": "111/06/23", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 635000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 36, "工程名稱": "111年度幼兒園教室門窗、地板及牆壁改善工程", "決標日期": "111/06/16", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 928000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 37, "工程名稱": "南區喜樹圖書館廁所整修工程", "決標日期": "111/06/15", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 1579000, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": 47370, "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 38, "工程名稱": "臺南市中西區6樓公廁改建工程", "決標日期": "111/05/18", "開工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": 739669, "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}, {"id": 39, "工程名稱": "總管理處男二宿舍改建學員宿舍整修工程", "決標日期": "111/04/07", "开工日期": "", "停工日期": "", "復工日期": "", "竣工日期(原)": "", "工期(天)": "", "第一次變更設計新增天數": "", "第二次變更設計新增天數": "", "第三次變更設計新增天數": "", "展延天數": "", "竣工日期(新)": "", "工程預算(元)": "", "決標金額(元)": "5,380,000", "第一次變更設計追加金額(元)": "", "第二次變更設計金額(元)": "", "第三次變更設計金額(元)": "", "變更設計後總金額(元)": "", "第一次估驗金額(元) 【扣除5%保留款】": "", "第一次估驗日期": "", "第一次估驗_送件日期": "", "第一次估驗_開發票時間": "", "第一次估驗_入帳日": "", "第二次估驗金額(元) 【扣除5%保留款】": "", "第二次估驗日期": "", "第二次估驗_送件日期": "", "第二次估驗_開發票時間": "", "第二次估驗_入帳日": "", "第三次估驗金額(元) 【扣除5%保留款】": "", "第三次估驗日期": "", "第三次估驗_送件日期": "", "第三次估驗_開發票時間": "", "第三次估驗_入帳日": "", "末期估驗金額(元) 【扣除5%保留款】": "", "末期估驗日期": "", "末期估驗_送件日期": "", "末期估驗_開發票時間": "", "末期估驗_入帳日": "", "結算金額(元)": "", "結算日期": "", "結算_送件日期": "", "結算_開發票時間": "", "結算_入帳日": "", "已請款金額(元)": "", "履約保證金(元)": "", "差額保證金(元)": "", "變更設計後 差額保證金(元)": "", "保固年限": "", "保固日期": "", "保固金額(元)": "", "申請退保固金日期": "", "收到保固金款項日期": "", "主辦機關尚未結清總金額(元)": "", "狀態": "完工", "決標公告": "", "備註": "", "決標公告_PDF": ""}];
+
+    let projects = [];
+    let currentFilter = 'all';
+
+    async function syncWithGoogle() {
+      const syncEl = document.getElementById('syncStatus');
+      const textEl = document.getElementById('syncText');
+      if (syncEl) {
+        syncEl.classList.remove('hidden');
+        textEl.innerText = "正在將 37 筆完整工程資料同步上傳至 Google 雲端...";
+      }
+
+      // 直接強制將本地完整的 INITIAL_PROJECTS 寫入 Google 試算表
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(INITIAL_PROJECTS)
+        });
+
+        projects = INITIAL_PROJECTS;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+        updateStats();
+        renderProjects();
+
+        if (syncEl) {
+          textEl.innerText = `同步成功！已成功上傳 ${projects.length} 筆工程資料至 Google 試算表。`;
+          setTimeout(() => syncEl.classList.add('hidden'), 4000);
+        }
+      } catch (err) {
+        console.error("雲端同步失敗：", err);
+        if (syncEl) {
+          textEl.innerText = "同步失敗，請檢查網路連線或 Apps Script。";
+          setTimeout(() => syncEl.classList.add('hidden'), 4000);
+        }
+      }
+    }
+
+    function saveToLocalAndCloud(updatedProjects) {
+      projects = updatedProjects;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      updateStats();
+      renderProjects();
+
+      try {
+        fetch(WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(projects)
+        });
+      } catch (e) {
+        console.error("寫入雲端例外：", e);
+      }
+    }
+
+    function getCategory(name) {
+      if (!name) return 'repair';
+      if (name.includes('耐震')) return 'seismic';
+      if (name.includes('活動中心') || name.includes('公所') || name.includes('廳舍') || name.includes('戶政') || name.includes('派出所') || name.includes('分局')) return 'community';
+      if (name.includes('圖書館') || name.includes('學校') || name.includes('國小') || name.includes('國中') || name.includes('館')) return 'library';
+      return 'repair';
+    }
+
+    function getCategoryTag(cat) {
+      switch(cat) {
+        case 'seismic': return { text: '耐震補強', bg: 'bg-amber-100 text-amber-800 border-amber-300' };
+        case 'community': return { text: '活動中心/廳舍', bg: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+        case 'library': return { text: '圖書館/校舍', bg: 'bg-sky-100 text-sky-800 border-sky-300' };
+        default: return { text: '修繕工程', bg: 'bg-purple-100 text-purple-800 border-purple-300' };
+      }
+    }
+
+    function filterCategory(cat, btnEl) {
+      currentFilter = cat;
+      document.querySelectorAll('.cat-btn').forEach(b => {
+        b.className = 'cat-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700';
+      });
+      if (btnEl) {
+        btnEl.className = 'cat-btn active px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#01814A] text-white shadow-sm';
+      }
+      renderProjects();
+    }
+
+    function updateStats() {
+      document.getElementById('stat-count').innerText = projects.length;
+      document.getElementById('count-all').innerText = projects.length;
+
+      let sumAward = 0;
+      let sumBilled = 0;
+      let seismicCount = 0;
+
+      projects.forEach(p => {
+        const award = Number(String(p['決標金額(元)'] || '').replace(/,/g, '')) || 0;
+        sumAward += award;
+        const billed = Number(String(p['已請款金額(元)'] || p['結算金額(元)'] || '').replace(/,/g, '')) || 0;
+        sumBilled += billed;
+        if ((p['工程名稱'] || '').includes('耐震')) seismicCount++;
+      });
+
+      document.getElementById('stat-amount').innerText = Math.round(sumAward / 10000).toLocaleString() + ' 萬';
+      document.getElementById('stat-billed').innerText = Math.round(sumBilled / 10000).toLocaleString() + ' 萬';
+      document.getElementById('stat-seismic').innerText = seismicCount;
+    }
+
+    function renderProjects() {
+      const grid = document.getElementById('projectGrid');
+      const kw = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+
+      const filtered = projects.filter(p => {
+        const cat = getCategory(p['工程名稱']);
+        const matchCat = currentFilter === 'all' || cat === currentFilter;
+        if (!matchCat) return false;
+        if (!kw) return true;
+        return Object.values(p).some(val => val && String(val).toLowerCase().includes(kw));
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 bg-white rounded-2xl border border-slate-200"><i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i><p class="font-medium text-sm">查無相符工程案件</p></div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(p => {
+        const cat = getCategory(p['工程名稱']);
+        const tag = getCategoryTag(cat);
+        const awardVal = p['決標金額(元)'];
+        const awardText = awardVal ? `NT$ ${Number(String(awardVal).replace(/,/g, '')).toLocaleString()}` : '依合約辦理';
+        const compDate = p['竣工日期(新)'] || p['竣工日期(原)'] || '-';
+        const extendText = p['展延天數'] ? ` (+${p['展延天數']}天)` : '';
+
+        return `
+          <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-[#01814A] hover:shadow-lg transition flex flex-col justify-between group cursor-pointer" onclick="openDetailModal(${p.id})">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] px-2.5 py-0.5 rounded-full border font-bold ${tag.bg}">
+                  ${tag.text}
+                </span>
+                <div class="flex space-x-1.5 opacity-90" onclick="event.stopPropagation()">
+                  <button onclick="openModal(${p.id})" title="編輯" class="p-1 text-slate-400 hover:text-[#01814A] transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                  <button onclick="deleteSingleProject(${p.id})" title="刪除" class="p-1 text-slate-400 hover:text-rose-600 transition"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+              <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-[#01814A] transition">
+                ${p['工程名稱'] || '未命名工程'}
+              </h4>
+              ${p['備註'] ? `<p class="text-[11px] text-slate-500 mt-1 truncate">📝 備註：${p['備註']}</p>` : ''}
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-1.5 font-mono">
+              <div class="flex justify-between items-center font-sans">
+                <span>決標金額：</span>
+                <span class="font-bold text-slate-900 font-mono">${awardText}</span>
+              </div>
+              <div class="flex justify-between items-center font-sans">
+                <span>開工日期：</span>
+                <span class="font-mono">${p['開工日期'] || '-'}</span>
+              </div>
+              <div class="flex justify-between items-center font-sans">
+                <span>竣工日期：</span>
+                <span class="font-mono text-slate-700 font-semibold">${compDate}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openDetailModal(id) {
+      const p = projects.find(item => item.id == id);
+      if (!p) return;
+
+      document.getElementById('detailTitle').innerText = p['工程名稱'] || '工程詳細資料';
+      document.getElementById('detailCategoryBadge').innerText = getCategoryTag(getCategory(p['工程名稱'])).text;
+      document.getElementById('detailEditBtn').onclick = () => {
+        closeDetailModal();
+        openModal(p.id);
+      };
+
+      const renderVal = (v) => (v !== undefined && v !== null && String(v).trim() !== "") ? v : "<span class='text-slate-300'>-</span>";
+      const renderMoney = (v) => v ? `NT$ ${Number(String(v).replace(/,/g, '')).toLocaleString()}` : "<span class='text-slate-300'>-</span>";
+
+      document.getElementById('detailContent').innerHTML = `
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <div class="font-bold text-slate-800 text-sm flex items-center gap-1.5 text-[#01814A]">
+            <i class="fa-solid fa-calendar-check"></i> 工程工期與重要時程
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+            <p>🏷️ 狀態：<span class="font-bold text-slate-800">${renderVal(p['狀態'])}</span></p>
+            <p>📅 決標日期：<span class="font-mono text-slate-800">${renderVal(p['決標日期'])}</span></p>
+            <p>🚀 開工日期：<span class="font-mono text-slate-800">${renderVal(p['開工日期'])}</span></p>
+            <p>⏱️ 原工期：<span class="font-bold text-slate-800">${renderVal(p['工期(天)'])} 天</span></p>
+          </div>
+        </div>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <div class="font-bold text-slate-800 text-sm flex items-center gap-1.5 text-[#01814A]">
+            <i class="fa-solid fa-coins"></i> 契約金額與結清情況
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+            <p>💰 工程預算：<span class="font-mono font-bold">${renderMoney(p['工程預算(元)'])}</span></p>
+            <p>🏆 決標金額：<span class="font-mono font-bold text-[#01814A]">${renderMoney(p['決標金額(元)'])}</span></p>
+            <p class="md:col-span-3 bg-white p-2 rounded border">📝 備註：${renderVal(p['備註'])}</p>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    const FORM_FIELDS = ["工程名稱", "狀態", "決標日期", "開工日期", "工期(天)", "工程預算(元)", "決標金額(元)", "備註"];
+
+    function openModal(id = null) {
+      document.getElementById('projectForm').reset();
+      if (id) {
+        const p = projects.find(item => item.id == id);
+        if (!p) return;
+        document.getElementById('modalTitle').innerText = `修改實績：${p['工程名稱']}`;
+        document.getElementById('form-id').value = p.id;
+        document.getElementById('deleteProjectBtn').classList.remove('hidden');
+        FORM_FIELDS.forEach(fname => {
+          const el = document.getElementById(`f-${fname}`);
+          if (el) el.value = p[fname] !== undefined && p[fname] !== null ? p[fname] : "";
+        });
+      } else {
+        document.getElementById('modalTitle').innerText = "新增工程實績";
+        document.getElementById('form-id').value = "";
+        document.getElementById('deleteProjectBtn').classList.add('hidden');
+      }
+      document.getElementById('projectModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('projectModal').classList.add('hidden');
+    }
+
+    function switchFormTab(tabId) {
+      document.querySelectorAll('.form-tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId)?.classList.remove('hidden');
+      event.currentTarget.classList.add('active');
+    }
+
+    function saveProject(e) {
+      e.preventDefault();
+      const id = document.getElementById('form-id').value;
+      const name = document.getElementById('f-工程名稱').value.trim();
+      if (!name) { alert('請填寫工程名稱'); return; }
+
+      const projectData = {};
+      FORM_FIELDS.forEach(fname => {
+        const el = document.getElementById(`f-${fname}`);
+        projectData[fname] = el ? el.value.trim() : "";
+      });
+
+      let updatedList = [...projects];
+      if (id) {
+        const idx = updatedList.findIndex(item => item.id == id);
+        if (idx !== -1) updatedList[idx] = { ...updatedList[idx], ...projectData };
+      } else {
+        updatedList.unshift({ id: Date.now(), ...projectData });
+      }
+
+      saveToLocalAndCloud(updatedList);
+      closeModal();
+      alert('儲存成功並已同步至 Google 雲端！');
+    }
+
+    function deleteSingleProject(id) {
+      if (confirm('確定要刪除這筆工程紀錄嗎？')) {
+        const updatedList = projects.filter(item => item.id != id);
+        saveToLocalAndCloud(updatedList);
+      }
+    }
+
+    function deleteCurrentProject() {
+      const id = document.getElementById('form-id').value;
+      if (id) { deleteSingleProject(id); closeModal(); }
+    }
+
+    function exportData() {
+      const blob = new Blob([JSON.stringify(projects, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `翔奕營造_備份_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    }
+
+    function importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          if (Array.isArray(imported)) {
+            saveToLocalAndCloud(imported);
+            alert(`成功匯入 ${projects.length} 筆資料並同步至雲端！`);
+          }
+        } catch(err) { alert('匯入失敗：' + err.message); }
+      };
+      reader.readAsText(file);
+    }
+
+    // 初始化讀取
+    projects = INITIAL_PROJECTS;
+    updateStats();
+    renderProjects();
+  </script>
+</body>
+</html>
